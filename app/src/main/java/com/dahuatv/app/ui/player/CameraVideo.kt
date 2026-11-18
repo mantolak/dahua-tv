@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,6 +29,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -40,6 +42,8 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.dahuatv.app.model.Camera
 import com.dahuatv.app.model.Stream
+import kotlinx.coroutines.delay
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.min
 
 private const val TAG = "CameraVideo"
@@ -55,22 +59,54 @@ sealed interface PlayerStatus {
  * composable is on screen: leaving the grid releases all 4 decoders before fullscreen starts 4K.
  */
 @Composable
-fun CameraVideo(camera: Camera, stream: Stream, modifier: Modifier = Modifier) {
+fun CameraVideo(
+    camera: Camera,
+    stream: Stream,
+    modifier: Modifier = Modifier,
+    /** FPS configured in the camera for this stream, shown next to the measured value. */
+    configuredFps: Int? = null,
+) {
     val context = LocalContext.current
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
     var status by remember { mutableStateOf<PlayerStatus>(PlayerStatus.Connecting) }
+    var videoSize by remember { mutableStateOf<VideoSize?>(null) }
+    var fps by remember { mutableStateOf<Float?>(null) }
+    val renderedFrames = remember { AtomicInteger() }
 
     LifecycleStartEffect(camera, stream) {
         status = PlayerStatus.Connecting
         val p = createPlayer(context, camera, stream)
         val reconnector = Reconnector(p, label = "${camera.name}/${stream.name}") { status = it }
+        val sizeListener = object : Player.Listener {
+            override fun onVideoSizeChanged(size: VideoSize) {
+                if (size.width > 0) videoSize = size
+            }
+        }
         p.addListener(reconnector)
+        p.addListener(sizeListener)
+        // Called on the playback thread for every frame actually sent to the screen.
+        p.setVideoFrameMetadataListener { _, _, _, _ -> renderedFrames.incrementAndGet() }
         p.prepare()
         player = p
         onStopOrDispose {
             reconnector.cancel()
+            p.removeListener(sizeListener)
             player = null
+            fps = null
             p.release()
+        }
+    }
+
+    // Measured FPS: frames rendered per second, sampled every second.
+    LaunchedEffect(player) {
+        if (player == null) return@LaunchedEffect
+        renderedFrames.set(0)
+        var last = System.nanoTime()
+        while (true) {
+            delay(1_000)
+            val now = System.nanoTime()
+            fps = renderedFrames.getAndSet(0) * 1e9f / (now - last)
+            last = now
         }
     }
 
@@ -82,7 +118,35 @@ fun CameraVideo(camera: Camera, stream: Stream, modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxSize(),
         )
         StatusBadge(status, Modifier.align(Alignment.Center))
+        StatsBadge(
+            stream = stream,
+            size = videoSize,
+            fps = fps.takeIf { status == PlayerStatus.Playing },
+            configuredFps = configuredFps,
+            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+        )
     }
+}
+
+/** e.g. "Sub 704×480 · 19.8/20 fps" — measured / configured in camera. */
+@Composable
+private fun StatsBadge(stream: Stream, size: VideoSize?, fps: Float?, configuredFps: Int?, modifier: Modifier) {
+    val text = buildString {
+        append(stream.label)
+        size?.let { append(" ${it.width}×${it.height}") }
+        append(" · ")
+        append(fps?.let { "%.1f".format(it) } ?: "–")
+        configuredFps?.let { append("/$it") }
+        append(" fps")
+    }
+    Text(
+        text = text,
+        modifier = modifier
+            .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(4.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        style = MaterialTheme.typography.labelSmall,
+        color = Color.White.copy(alpha = 0.9f),
+    )
 }
 
 @Composable

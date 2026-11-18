@@ -19,13 +19,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.dahuatv.app.data.CameraInfo
 import com.dahuatv.app.model.Camera
 import com.dahuatv.app.model.Stream
 import com.dahuatv.app.ui.player.CameraVideo
 import kotlinx.coroutines.delay
 
 @Composable
-fun FullscreenScreen(camera: Camera) {
+fun FullscreenScreen(camera: Camera, info: CameraInfo?) {
     // The grid's players are already released (it left composition), so 4K gets the decoder to itself.
     var showLabel by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) {
@@ -34,14 +35,19 @@ fun FullscreenScreen(camera: Camera) {
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        CameraVideo(camera = camera, stream = Stream.MAIN, modifier = Modifier.fillMaxSize())
+        CameraVideo(
+            camera = camera,
+            stream = Stream.MAIN,
+            configuredFps = info?.mainFps,
+            modifier = Modifier.fillMaxSize(),
+        )
         AnimatedVisibility(
             visible = showLabel,
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.TopStart).padding(32.dp),
         ) {
             Text(
-                text = "${camera.name} · 4K · Back for grid",
+                text = "${info?.title ?: camera.name} · Back for grid",
                 modifier = Modifier
                     .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
                     .padding(horizontal = 14.dp, vertical = 8.dp),

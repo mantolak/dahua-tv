@@ -25,6 +25,7 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import com.dahuatv.app.data.CameraInfo
 import com.dahuatv.app.model.Camera
 import com.dahuatv.app.model.Stream
 import com.dahuatv.app.ui.player.CameraVideo
@@ -34,6 +35,8 @@ private val GAP = 6.dp
 @Composable
 fun GridScreen(
     cameras: List<Camera>,
+    /** What each camera reports about itself (name, configured FPS); missing until fetched. */
+    infos: Map<Int, CameraInfo>,
     initialFocus: Int,
     onOpen: (Int) -> Unit,
     onEdit: (Int) -> Unit,
@@ -54,6 +57,7 @@ fun GridScreen(
                     val i = row * 2 + col
                     CameraTile(
                         camera = cameras[i],
+                        info = infos[i],
                         modifier = Modifier.weight(1f).fillMaxHeight().focusRequester(focus[i]),
                         onClick = { onOpen(i) },
                         onLongClick = { onEdit(i) },
@@ -67,6 +71,7 @@ fun GridScreen(
 @Composable
 private fun CameraTile(
     camera: Camera,
+    info: CameraInfo?,
     modifier: Modifier,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
@@ -88,7 +93,12 @@ private fun CameraTile(
         ),
     ) {
         if (camera.isConfigured) {
-            CameraVideo(camera = camera, stream = Stream.SUB, modifier = Modifier.fillMaxSize())
+            CameraVideo(
+                camera = camera,
+                stream = Stream.SUB,
+                configuredFps = info?.subFps,
+                modifier = Modifier.fillMaxSize(),
+            )
         } else {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -102,7 +112,8 @@ private fun CameraTile(
             }
         }
         Text(
-            text = camera.name,
+            // The name set in the camera itself; our own name until the camera has answered.
+            text = info?.title ?: camera.name,
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(8.dp)

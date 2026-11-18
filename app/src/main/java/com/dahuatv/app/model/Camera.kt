@@ -1,9 +1,9 @@
 package com.dahuatv.app.model
 
 /** Which Dahua stream to pull: sub-stream for the 2x2 grid, main (4K) stream for fullscreen. */
-enum class Stream(val subtype: Int) {
-    SUB(1),
-    MAIN(0),
+enum class Stream(val subtype: Int, val label: String) {
+    SUB(1, "Sub"),
+    MAIN(0, "Main"),
 }
 
 data class Camera(
