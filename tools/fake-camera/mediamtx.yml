@@ -1,0 +1,35 @@
+# Local stand-in for a Dahua camera, for testing the app without real cameras.
+# Test-only credentials: admin / t3st@P#ss  (contains @ and # on purpose: both must be URL-encoded).
+logLevel: info
+
+authMethod: internal
+authInternalUsers:
+  # ffmpeg on this Mac publishes the test stream without a password.
+  - user: any
+    ips: ['127.0.0.1', '::1']
+    permissions:
+      - action: publish
+  - user: admin
+    pass: "t3st@P#ss"
+    permissions:
+      - action: read
+
+rtspTransports: [tcp]
+# 8554 is taken by the Android emulator's own control port.
+rtspAddress: :10554
+# Dahua cameras use Digest authentication.
+rtspAuthMethods: [digest]
+
+api: false
+metrics: false
+pprof: false
+playback: false
+rtmp: false
+hls: false
+webrtc: false
+srt: false
+
+paths:
+  # Same path as Dahua: rtsp://host:10554/cam/realmonitor?channel=1&subtype=N
+  # (the query string is ignored here, so sub and main stream are the same test feed).
+  cam/realmonitor:

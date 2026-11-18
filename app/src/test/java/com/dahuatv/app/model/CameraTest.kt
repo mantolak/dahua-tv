@@ -31,6 +31,26 @@ class CameraTest {
     }
 
     @Test
+    fun `player URL carries percent-encoded credentials`() {
+        val c = cam.copy(username = "admin", password = "t3st@P#ss:/ ł")
+        assertEquals(
+            "rtsp://admin:t3st%40P%23ss%3A%2F%20%C5%82@192.168.0.20:554/cam/realmonitor?channel=1&subtype=1",
+            c.playerUrl(Stream.SUB),
+        )
+    }
+
+    @Test
+    fun `player URL without username has no userinfo`() {
+        val c = cam.copy(username = "", password = "")
+        assertEquals(c.rtspUrl(Stream.MAIN), c.playerUrl(Stream.MAIN))
+    }
+
+    @Test
+    fun `percent-encoding keeps unreserved characters`() {
+        assertEquals("Az09-._~", Camera.percentEncode("Az09-._~"))
+    }
+
+    @Test
     fun `empty slots are unconfigured and numbered from 1`() {
         val slot = Camera.empty(2)
         assertEquals("Camera 3", slot.name)

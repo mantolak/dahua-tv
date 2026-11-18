@@ -26,6 +26,8 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.dahuatv.app.model.Camera
+import com.dahuatv.app.model.Stream
+import com.dahuatv.app.ui.player.CameraVideo
 
 private val GAP = 6.dp
 
@@ -85,22 +87,29 @@ private fun CameraTile(
             focusedContainerColor = MaterialTheme.colorScheme.surface,
         ),
     ) {
-        // TODO(player step): ExoPlayer video surface for Stream.SUB goes here.
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(camera.name, style = MaterialTheme.typography.titleLarge, color = Color.White)
-                Text(
-                    text = if (camera.isConfigured) camera.host else "Not set up · hold OK to configure",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.6f),
-                )
+        if (camera.isConfigured) {
+            CameraVideo(camera = camera, stream = Stream.SUB, modifier = Modifier.fillMaxSize())
+        } else {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(camera.name, style = MaterialTheme.typography.titleLarge, color = Color.White)
+                    Text(
+                        text = "Not set up · press OK to configure",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.6f),
+                    )
+                }
             }
         }
         Text(
             text = camera.name,
-            modifier = Modifier.align(Alignment.BottomStart).padding(8.dp),
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(8.dp)
+                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                .padding(horizontal = 6.dp, vertical = 2.dp),
             style = MaterialTheme.typography.labelMedium,
-            color = Color.White.copy(alpha = 0.8f),
+            color = Color.White.copy(alpha = 0.9f),
         )
     }
 }

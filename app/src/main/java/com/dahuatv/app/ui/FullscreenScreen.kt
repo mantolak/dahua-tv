@@ -1,30 +1,53 @@
 package com.dahuatv.app.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.dahuatv.app.model.Camera
 import com.dahuatv.app.model.Stream
+import com.dahuatv.app.ui.player.CameraVideo
+import kotlinx.coroutines.delay
 
 @Composable
 fun FullscreenScreen(camera: Camera) {
-    // TODO(player step): grid players are released before this screen starts the 4K main stream.
-    Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(camera.name, style = MaterialTheme.typography.headlineMedium, color = Color.White)
+    // The grid's players are already released (it left composition), so 4K gets the decoder to itself.
+    var showLabel by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        delay(3_000)
+        showLabel = false
+    }
+
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        CameraVideo(camera = camera, stream = Stream.MAIN, modifier = Modifier.fillMaxSize())
+        AnimatedVisibility(
+            visible = showLabel,
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopStart).padding(32.dp),
+        ) {
             Text(
-                text = if (camera.isConfigured) camera.rtspUrl(Stream.MAIN) else "Not set up",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.6f),
+                text = "${camera.name} · 4K · Back for grid",
+                modifier = Modifier
+                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
             )
-            Text("Back to return to grid", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
         }
     }
 }
