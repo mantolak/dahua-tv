@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -30,13 +31,15 @@ fun DahuaTvApp(repository: CameraRepository) {
 
     // Ask each camera for its own name and configured FPS; re-asks when a camera's settings change.
     val api = remember { DahuaApi() }
-    var infos by remember { mutableStateOf(emptyMap<Int, CameraInfo>()) }
+    // One entry per tile, written independently: the 4 checks run concurrently, so a
+    // read-modify-write of a whole map would let the last one to finish erase the others.
+    val infos = remember { mutableStateMapOf<Int, CameraInfo>() }
     // Bumped by OK on a tile whose login was refused: one new check, nothing automatic.
-    var recheck by remember { mutableStateOf(emptyMap<Int, Int>()) }
+    val recheck = remember { mutableStateMapOf<Int, Int>() }
     cameras.forEachIndexed { i, camera ->
         LaunchedEffect(camera, recheck[i]) {
-            infos = infos - i
-            if (camera.isConfigured) infos = infos + (i to api.fetchInfo(camera))
+            infos.remove(i)
+            if (camera.isConfigured) infos[i] = api.fetchInfo(camera)
         }
     }
 
@@ -50,7 +53,7 @@ fun DahuaTvApp(repository: CameraRepository) {
                 when {
                     // An empty slot has nothing to show yet, so OK goes straight to its settings.
                     !cameras[i].isConfigured -> screen = Screen.Settings(i)
-                    infos[i]?.login != null -> recheck = recheck + (i to (recheck[i] ?: 0) + 1)
+                    infos[i]?.login != null -> recheck[i] = (recheck[i] ?: 0) + 1
                     else -> screen = Screen.Fullscreen(i)
                 }
             },
