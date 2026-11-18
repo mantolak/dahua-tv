@@ -42,6 +42,7 @@ import androidx.media3.ui.PlayerView
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.dahuatv.app.model.Camera
+import com.dahuatv.app.model.LoginProblem
 import com.dahuatv.app.model.Stream
 import kotlinx.coroutines.delay
 import java.util.concurrent.atomic.AtomicInteger
@@ -53,6 +54,8 @@ sealed interface PlayerStatus {
     data object Connecting : PlayerStatus
     data object Playing : PlayerStatus
     data class Retrying(val reason: String, val inSeconds: Long) : PlayerStatus
+    /** Stopped for good (login refused): retried only when settings change or the screen reopens. */
+    data class Stopped(val reason: String) : PlayerStatus
 }
 
 /**
@@ -172,6 +175,7 @@ private fun StatusBadge(status: PlayerStatus, modifier: Modifier) {
         PlayerStatus.Playing -> return
         PlayerStatus.Connecting -> "Connecting…"
         is PlayerStatus.Retrying -> "${status.reason}\nRetrying in ${status.inSeconds}s"
+        is PlayerStatus.Stopped -> status.reason
     }
     Text(
         text = text,
@@ -269,7 +273,15 @@ private class Reconnector(
 
     override fun onPlayerError(error: PlaybackException) {
         Log.w(TAG, "$label: ${error.errorCodeName}: ${error.cause?.message}")
-        scheduleRetry(describe(error))
+        val detail = generateSequence(error.cause) { it.cause }.mapNotNull { it.message }.joinToString(" ")
+        val login = LoginProblem.fromRtspError(detail)
+        if (login != null) {
+            // Never auto-retry a refused login: it would keep the camera's lockout alive.
+            handler.removeCallbacksAndMessages(null)
+            onStatus(PlayerStatus.Stopped(login.message))
+        } else {
+            scheduleRetry(describe(error))
+        }
     }
 
     private fun scheduleRetry(reason: String) {
@@ -286,17 +298,14 @@ private class Reconnector(
         player.removeListener(this)
     }
 
-    private fun describe(e: PlaybackException): String {
-        val detail = generateSequence(e.cause) { it.cause }.mapNotNull { it.message }.joinToString(" ")
-        return when {
-            "401" in detail || "Unauthorized" in detail -> "Wrong user or password"
+    private fun describe(e: PlaybackException): String =
+        when {
             e.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED -> "Can't reach camera"
             e.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> "Camera not responding"
             e.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED -> "TV has no free video decoder"
             e.errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES -> "Stream too large for this TV"
             else -> "Stream error (${e.errorCodeName})"
         }
-    }
 
     private companion object {
         const val STALL_TIMEOUT_MS = 15_000L

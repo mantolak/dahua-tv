@@ -2,6 +2,7 @@ package com.dahuatv.app.data
 
 import android.util.Log
 import com.dahuatv.app.model.Camera
+import com.dahuatv.app.model.LoginProblem
 import com.dahuatv.app.model.Stream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -25,8 +26,10 @@ class DahuaApi(private val httpPort: Int = 80) {
 
     suspend fun fetchInfo(camera: Camera): CameraInfo = withContext(Dispatchers.IO) {
         val ch = camera.channel - 1
-        val title = getConfig(camera, "ChannelTitle")["table.ChannelTitle[$ch].Name"]
-        val encode = getConfig(camera, "Encode")
+        val titleCfg = getConfig(camera, "ChannelTitle")
+        // A refused login must not be repeated (camera lockout), so skip the second request.
+        val encode = if (titleCfg == null) emptyMap() else getConfig(camera, "Encode").orEmpty()
+        val title = titleCfg?.get("table.ChannelTitle[$ch].Name")
         CameraInfo(
             title = title?.trim()?.takeIf { it.isNotEmpty() },
             mainFps = encode["table.Encode[$ch].MainFormat[0].Video.FPS"]?.toFloatOrNull()?.roundToInt(),
@@ -34,10 +37,19 @@ class DahuaApi(private val httpPort: Int = 80) {
         ).also { Log.i(TAG, "${camera.host}: $it") }
     }
 
-    private fun getConfig(camera: Camera, name: String): Map<String, String> =
-        runCatching { parseConfig(get(camera, "/cgi-bin/configManager.cgi?action=getConfig&name=$name")) }
-            .onFailure { Log.w(TAG, "${camera.host}: getConfig $name failed: ${it.message}") }
-            .getOrDefault(emptyMap())
+    /** null = the camera refused our login; empty = other failure. */
+    private fun getConfig(camera: Camera, name: String): Map<String, String>? =
+        try {
+            parseConfig(get(camera, "/cgi-bin/configManager.cgi?action=getConfig&name=$name"))
+        } catch (e: LoginRefused) {
+            Log.w(TAG, "${camera.host}: getConfig $name refused: HTTP ${e.status}")
+            null
+        } catch (e: Exception) {
+            Log.w(TAG, "${camera.host}: getConfig $name failed: ${e.message}")
+            emptyMap()
+        }
+
+    private class LoginRefused(val status: Int) : IOException("HTTP $status")
 
     private fun get(camera: Camera, pathAndQuery: String): String {
         val url = URL("http", camera.host, httpPort, pathAndQuery)
@@ -60,7 +72,9 @@ class DahuaApi(private val httpPort: Int = 80) {
             conn = open(url).apply { setRequestProperty("Authorization", auth) }
         }
         try {
-            if (conn.responseCode != HttpURLConnection.HTTP_OK) throw IOException("HTTP ${conn.responseCode}")
+            val status = conn.responseCode
+            if (LoginProblem.fromStatus(status) != null) throw LoginRefused(status)
+            if (status != HttpURLConnection.HTTP_OK) throw IOException("HTTP $status")
             return conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
         } finally {
             conn.disconnect()
