@@ -5,8 +5,8 @@ package com.dahuatv.app.model
  * the client after a few failed logins, and every further attempt keeps the lock alive.
  */
 enum class LoginProblem(val message: String) {
-    WRONG_PASSWORD("Wrong user or password · hold OK to fix"),
-    LOCKED("Camera blocked this TV after failed logins · wait, then reopen"),
+    WRONG_PASSWORD("Wrong user or password\nHold OK to fix, press OK to retry"),
+    LOCKED("Camera blocked this TV after failed logins\nWait ~10 min, then press OK"),
     ;
 
     companion object {

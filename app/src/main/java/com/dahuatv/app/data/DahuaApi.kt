@@ -17,6 +17,8 @@ data class CameraInfo(
     val title: String?,
     val mainFps: Int?,
     val subFps: Int?,
+    /** Set when the camera refused our login: the app then sends it nothing more until asked. */
+    val login: LoginProblem? = null,
 ) {
     fun fps(stream: Stream): Int? = if (stream == Stream.MAIN) mainFps else subFps
 }
@@ -26,10 +28,15 @@ class DahuaApi(private val httpPort: Int = 80) {
 
     suspend fun fetchInfo(camera: Camera): CameraInfo = withContext(Dispatchers.IO) {
         val ch = camera.channel - 1
-        val titleCfg = getConfig(camera, "ChannelTitle")
-        // A refused login must not be repeated (camera lockout), so skip the second request.
-        val encode = if (titleCfg == null) emptyMap() else getConfig(camera, "Encode").orEmpty()
-        val title = titleCfg?.get("table.ChannelTitle[$ch].Name")
+        val titleCfg = try {
+            getConfig(camera, "ChannelTitle")
+        } catch (e: LoginRefused) {
+            // A refused login must not be repeated (camera lockout): stop here.
+            return@withContext CameraInfo(null, null, null, LoginProblem.fromStatus(e.status))
+                .also { Log.w(TAG, "${camera.host}: login refused (HTTP ${e.status})") }
+        }
+        val encode = runCatching { getConfig(camera, "Encode") }.getOrDefault(emptyMap())
+        val title = titleCfg["table.ChannelTitle[$ch].Name"]
         CameraInfo(
             title = title?.trim()?.takeIf { it.isNotEmpty() },
             mainFps = encode["table.Encode[$ch].MainFormat[0].Video.FPS"]?.toFloatOrNull()?.roundToInt(),
@@ -37,13 +44,12 @@ class DahuaApi(private val httpPort: Int = 80) {
         ).also { Log.i(TAG, "${camera.host}: $it") }
     }
 
-    /** null = the camera refused our login; empty = other failure. */
-    private fun getConfig(camera: Camera, name: String): Map<String, String>? =
+    /** Throws [LoginRefused] if the camera refused the login; other failures give an empty map. */
+    private fun getConfig(camera: Camera, name: String): Map<String, String> =
         try {
             parseConfig(get(camera, "/cgi-bin/configManager.cgi?action=getConfig&name=$name"))
         } catch (e: LoginRefused) {
-            Log.w(TAG, "${camera.host}: getConfig $name refused: HTTP ${e.status}")
-            null
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "${camera.host}: getConfig $name failed: ${e.message}")
             emptyMap()

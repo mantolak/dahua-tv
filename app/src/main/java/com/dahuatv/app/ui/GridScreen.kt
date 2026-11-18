@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -92,24 +93,19 @@ private fun CameraTile(
             focusedContainerColor = MaterialTheme.colorScheme.surface,
         ),
     ) {
-        if (camera.isConfigured) {
-            CameraVideo(
+        val login = info?.login
+        when {
+            !camera.isConfigured -> EmptySlot(camera)
+            // Video starts only after one web-API login check, so a camera that refuses us
+            // (wrong password or lockout) never gets a burst of RTSP login attempts.
+            info == null -> TileMessage("Checking login…")
+            login != null -> TileMessage(login.message)
+            else -> CameraVideo(
                 camera = camera,
                 stream = Stream.SUB,
-                configuredFps = info?.subFps,
+                configuredFps = info.subFps,
                 modifier = Modifier.fillMaxSize(),
             )
-        } else {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(camera.name, style = MaterialTheme.typography.titleLarge, color = Color.White)
-                    Text(
-                        text = "Not set up · press OK to configure",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.6f),
-                    )
-                }
-            }
         }
         Text(
             // The name set in the camera itself; our own name until the camera has answered.
@@ -121,6 +117,32 @@ private fun CameraTile(
                 .padding(horizontal = 6.dp, vertical = 2.dp),
             style = MaterialTheme.typography.labelMedium,
             color = Color.White.copy(alpha = 0.9f),
+        )
+    }
+}
+
+@Composable
+private fun EmptySlot(camera: Camera) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(camera.name, style = MaterialTheme.typography.titleLarge, color = Color.White)
+            Text(
+                text = "Not set up · press OK to configure",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.6f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun TileMessage(text: String) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.White.copy(alpha = 0.85f),
+            textAlign = TextAlign.Center,
         )
     }
 }

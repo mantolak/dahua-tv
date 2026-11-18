@@ -31,8 +31,10 @@ fun DahuaTvApp(repository: CameraRepository) {
     // Ask each camera for its own name and configured FPS; re-asks when a camera's settings change.
     val api = remember { DahuaApi() }
     var infos by remember { mutableStateOf(emptyMap<Int, CameraInfo>()) }
+    // Bumped by OK on a tile whose login was refused: one new check, nothing automatic.
+    var recheck by remember { mutableStateOf(emptyMap<Int, Int>()) }
     cameras.forEachIndexed { i, camera ->
-        LaunchedEffect(camera) {
+        LaunchedEffect(camera, recheck[i]) {
             infos = infos - i
             if (camera.isConfigured) infos = infos + (i to api.fetchInfo(camera))
         }
@@ -45,8 +47,12 @@ fun DahuaTvApp(repository: CameraRepository) {
             initialFocus = lastIndex,
             onOpen = { i ->
                 lastIndex = i
-                // An empty slot has nothing to show yet, so OK goes straight to its settings.
-                screen = if (cameras[i].isConfigured) Screen.Fullscreen(i) else Screen.Settings(i)
+                when {
+                    // An empty slot has nothing to show yet, so OK goes straight to its settings.
+                    !cameras[i].isConfigured -> screen = Screen.Settings(i)
+                    infos[i]?.login != null -> recheck = recheck + (i to (recheck[i] ?: 0) + 1)
+                    else -> screen = Screen.Fullscreen(i)
+                }
             },
             onEdit = { lastIndex = it; screen = Screen.Settings(it) },
         )
