@@ -1,5 +1,7 @@
 # Dahua TV
 
+[![CI](https://github.com/mantolak/dahua-tv/actions/workflows/ci.yml/badge.svg)](https://github.com/mantolak/dahua-tv/actions/workflows/ci.yml)
+
 An Android TV app that turns a TV into a **camera wall for Dahua IP cameras** on the local network.
 It shows four cameras live in a 2×2 grid, opens any of them fullscreen in 4K with one press of the
 remote, and keeps every stream running unattended: reconnecting after drops and never locking
@@ -410,6 +412,16 @@ with the emulator or TV selected.
 ```sh
 ./gradlew testDebugUnitTest
 ```
+
+### Continuous integration
+
+`.github/workflows/ci.yml` runs the unit tests on **every pull request to `main`** and on every push to
+`main`: Ubuntu runner, Temurin JDK 21, Gradle cache via `gradle/actions/setup-gradle` (which also
+validates the Gradle wrapper). HTML test reports are uploaded as the `unit-test-reports` artifact.
+Actions are pinned to commit SHAs, and the workflow token is read-only.
+
+`main` is protected by a ruleset: changes land only through pull requests, with no force-pushes and no
+deletion, and the **Unit tests** check must pass before a PR can be merged.
 
 ### Fake camera (`tools/fake-camera`)
 
