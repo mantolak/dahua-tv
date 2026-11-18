@@ -9,7 +9,7 @@ enum class Stream(val subtype: Int) {
 data class Camera(
     val name: String,
     val host: String = "",
-    val port: Int = 554,
+    val port: Int = DEFAULT_PORT,
     val username: String = "",
     val password: String = "",
     val channel: Int = 1,
@@ -26,8 +26,11 @@ data class Camera(
 
     companion object {
         const val GRID_SIZE = 4
+        const val DEFAULT_PORT = 554
 
-        /** Placeholder until the settings + encrypted storage step. */
-        fun placeholders(): List<Camera> = List(GRID_SIZE) { Camera(name = "Camera ${it + 1}") }
+        fun defaultName(index: Int) = "Camera ${index + 1}"
+
+        /** An empty, not-yet-configured grid slot. */
+        fun empty(index: Int) = Camera(name = defaultName(index))
     }
 }

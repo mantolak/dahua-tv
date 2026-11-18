@@ -31,9 +31,9 @@ class CameraTest {
     }
 
     @Test
-    fun `placeholders are four unconfigured cameras`() {
-        val list = Camera.placeholders()
-        assertEquals(4, list.size)
-        assertTrue(list.none { it.isConfigured })
+    fun `empty slots are unconfigured and numbered from 1`() {
+        val slot = Camera.empty(2)
+        assertEquals("Camera 3", slot.name)
+        assertTrue(!slot.isConfigured)
     }
 }
