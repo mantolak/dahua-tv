@@ -123,7 +123,7 @@ fun CameraVideo(
             size = videoSize,
             fps = fps.takeIf { status == PlayerStatus.Playing },
             configuredFps = configuredFps,
-            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+            modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
         )
     }
 }

@@ -44,7 +44,8 @@ fun FullscreenScreen(camera: Camera, info: CameraInfo?) {
         AnimatedVisibility(
             visible = showLabel,
             exit = fadeOut(),
-            modifier = Modifier.align(Alignment.TopStart).padding(32.dp),
+            // Top-right: the FPS badge owns the top-left corner.
+            modifier = Modifier.align(Alignment.TopEnd).padding(32.dp),
         ) {
             Text(
                 text = "${info?.title ?: camera.name} · Back for grid",
