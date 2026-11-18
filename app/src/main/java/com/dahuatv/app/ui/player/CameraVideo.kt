@@ -29,6 +29,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -65,6 +66,13 @@ fun CameraVideo(
     modifier: Modifier = Modifier,
     /** FPS configured in the camera for this stream, shown next to the measured value. */
     configuredFps: Int? = null,
+    /**
+     * null = no audio at all (track not even decoded, used by the grid).
+     * true/false = audio decoded, muted or audible; toggling doesn't restart the stream.
+     */
+    muted: Boolean? = null,
+    /** Called with whether the stream actually carries an audio track. */
+    onHasAudio: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
@@ -75,11 +83,15 @@ fun CameraVideo(
 
     LifecycleStartEffect(camera, stream) {
         status = PlayerStatus.Connecting
-        val p = createPlayer(context, camera, stream)
+        val p = createPlayer(context, camera, stream, audioEnabled = muted != null)
         val reconnector = Reconnector(p, label = "${camera.name}/${stream.name}") { status = it }
         val sizeListener = object : Player.Listener {
             override fun onVideoSizeChanged(size: VideoSize) {
                 if (size.width > 0) videoSize = size
+            }
+
+            override fun onTracksChanged(tracks: Tracks) {
+                if (!tracks.isEmpty) onHasAudio(tracks.containsType(C.TRACK_TYPE_AUDIO))
             }
         }
         p.addListener(reconnector)
@@ -95,6 +107,11 @@ fun CameraVideo(
             fps = null
             p.release()
         }
+    }
+
+    // Mute/unmute just changes the volume, so the picture never interrupts.
+    LaunchedEffect(player, muted) {
+        player?.volume = if (muted == false) 1f else 0f
     }
 
     // Measured FPS: frames rendered per second, sampled every second.
@@ -179,7 +196,7 @@ private fun createPlayerView(context: Context) = PlayerView(context).apply {
 }
 
 @OptIn(UnstableApi::class)
-private fun createPlayer(context: Context, camera: Camera, stream: Stream): ExoPlayer {
+private fun createPlayer(context: Context, camera: Camera, stream: Stream, audioEnabled: Boolean): ExoPlayer {
     val renderers = DefaultRenderersFactory(context)
         // If the hardware HEVC decoder refuses (e.g. too many instances), try the next decoder.
         .setEnableDecoderFallback(true)
@@ -191,10 +208,12 @@ private fun createPlayer(context: Context, camera: Camera, stream: Stream): ExoP
         .setLoadControl(loadControl)
         .build()
 
-    // Camera audio is not used: don't even decode it.
-    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-        .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
-        .build()
+    // Without audio (grid) the audio track isn't even decoded; with audio it starts silent.
+    if (!audioEnabled) {
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
+            .build()
+    }
     player.volume = 0f
 
     val source = RtspMediaSource.Factory()
