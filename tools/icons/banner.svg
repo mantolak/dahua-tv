@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <rect width="640" height="360" fill="#0F1720"/>
+  <path d="M80,110h44a10,10 0 0 1 10,10v44a10,10 0 0 1 -10,10h-44a10,10 0 0 1 -10,-10v-44a10,10 0 0 1 10,-10z" fill="#7CC0FF"/>
+  <path d="M156,110h44a10,10 0 0 1 10,10v44a10,10 0 0 1 -10,10h-44a10,10 0 0 1 -10,-10v-44a10,10 0 0 1 10,-10zM80,186h44a10,10 0 0 1 10,10v44a10,10 0 0 1 -10,10h-44a10,10 0 0 1 -10,-10v-44a10,10 0 0 1 10,-10zM156,186h44a10,10 0 0 1 10,10v44a10,10 0 0 1 -10,10h-44a10,10 0 0 1 -10,-10v-44a10,10 0 0 1 10,-10z" fill="#3B8EEA"/>
+  <path d="M87.92,142.0a14.08,14.08 0 1 0 28.16,0a14.08,14.08 0 1 0 -28.16,0z" fill="#FF4D4D"/>
+  <text x="252" y="196" font-family="Helvetica Neue" font-weight="bold" font-size="66" fill="#FFFFFF">Dahua TV</text>
+  <text x="254" y="240" font-family="Helvetica Neue" font-size="26" fill="#9FB3C8">Camera wall · 4 live views</text>
+</svg>
