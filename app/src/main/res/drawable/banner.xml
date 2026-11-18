@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 320x180 TV launcher banner: 2x2 camera grid mark -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path android:fillColor="#FF101418" android:pathData="M0,0h320v180h-320z" />
+    <path android:fillColor="#FF2E7DD7" android:pathData="M110,40h46v46h-46z" />
+    <path android:fillColor="#FF2E7DD7" android:pathData="M164,40h46v46h-46z" />
+    <path android:fillColor="#FF2E7DD7" android:pathData="M110,94h46v46h-46z" />
+    <path android:fillColor="#FF2E7DD7" android:pathData="M164,94h46v46h-46z" />
+</vector>
